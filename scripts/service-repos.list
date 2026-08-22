@@ -1,0 +1,12 @@
+# GuestTek edge service repos — source of truth for CI clone/fetch (no release-manifest.yaml on host).
+# One repo per line: name|path|remote|branch
+# branch: git branch to checkout after fetch, or "-" for default (clone HEAD / origin default)
+#
+camsuite-emb-ip-camera|camsuite-emb-ip-camera|git@bitbucket.org:guesttek/camsuite-emb-ip-camera.git|feature/ip-camera-service-approach-b
+camsuite-emb-video-capture|camsuite-emb-video-capture|git@bitbucket.org:guesttek/camsuite-emb-video-capture.git|feature/Packaging
+camsuite-emb-video-upload-manager|camsuite-emb-video-upload-manager|git@bitbucket.org:guesttek/camsuite-emb-video-upload-manager.git|dev
+camsuite-emb-mqtt-client|camsuite-emb-mqtt-client|git@bitbucket.org:guesttek/camsuite-emb-mqtt-client.git|-
+camsuite-emb-provisioning|camsuite-emb-provisioning|git@bitbucket.org:guesttek/camsuite-emb-provisioning.git|-
+camsuite-emb-pre-provisioning|camsuite-emb-pre-provisioning|git@bitbucket.org:guesttek/camsuite-emb-pre-provisioning.git|-
+suspicious_objects_inference_service|suspicious_objects_inference_service|git@github.com:wasp-innovation-ai/suspicious_objects_inference_service.git|-
+alert_manager_service|alert_manager_service|git@github.com:wasp-innovation-ai/alert_manager_service.git|-
