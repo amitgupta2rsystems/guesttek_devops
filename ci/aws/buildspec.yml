@@ -1,13 +1,3 @@
-# CodeBuild — orchestration (guesttek_devops) + read-only service clones
-#
-# Project source: https://github.com/amitgupta2rsystems/guesttek_devops
-# Buildspec path: ci/aws/buildspec.yml
-# Env:
-#   GIT_SSH_SECRET_NAME=guesttek/git-ssh-key
-#   CLONE_ROOT=/tmp/repos
-#
-# Never commit/push to service remotes (or orchestration) from this job.
-
 version: 0.2
 
 env:
@@ -22,36 +12,21 @@ phases:
     commands:
       - apt-get update -qq
       - apt-get install -y -qq git openssh-client
-      - chmod +x "$CODEBUILD_SRC_DIR/ci/aws/"*.sh
+      - chmod +x $CODEBUILD_SRC_DIR/ci/aws/setup-git-ssh.sh $CODEBUILD_SRC_DIR/ci/aws/clone-service-repos.sh $CODEBUILD_SRC_DIR/ci/aws/prepare-orchestration.sh
 
   pre_build:
     commands:
-      - |
-        set -euo pipefail
-        echo "==== Orchestration source (guesttek_devops) ===="
-        echo "CODEBUILD_SRC_DIR=$CODEBUILD_SRC_DIR"
-        ls -la "$CODEBUILD_SRC_DIR"
-        ls -la "$CODEBUILD_SRC_DIR/ci/aws" "$CODEBUILD_SRC_DIR/scripts"
-        git -C "$CODEBUILD_SRC_DIR" remote -v || true
-        git -C "$CODEBUILD_SRC_DIR" log -1 --oneline || true
-        git -C "$CODEBUILD_SRC_DIR" remote set-url --push origin DISABLED 2>/dev/null || true
-        mkdir -p "$CLONE_ROOT"
-        rm -rf "$ORCHESTRATION_DIR"
-        cp -a "$CODEBUILD_SRC_DIR" "$ORCHESTRATION_DIR"
-        git -C "$ORCHESTRATION_DIR" remote set-url --push origin DISABLED 2>/dev/null || true
-      - ORCHESTRATION_SRC="$CODEBUILD_SRC_DIR" "$CODEBUILD_SRC_DIR/ci/aws/setup-git-ssh.sh"
+      - $CODEBUILD_SRC_DIR/ci/aws/prepare-orchestration.sh
+      - $CODEBUILD_SRC_DIR/ci/aws/setup-git-ssh.sh
 
   build:
     commands:
-      - |
-        ORCHESTRATION_SRC="$CODEBUILD_SRC_DIR" \
-        CLONE_ROOT="$CLONE_ROOT" \
-        "$CODEBUILD_SRC_DIR/ci/aws/clone-service-repos.sh"
+      - $CODEBUILD_SRC_DIR/ci/aws/clone-service-repos.sh
 
   post_build:
     commands:
-      - echo "Orchestration: $ORCHESTRATION_DIR"
-      - echo "Build completed on $(date)"
+      - echo Orchestration dir $ORCHESTRATION_DIR
+      - echo Build completed
 
 artifacts:
   files:
