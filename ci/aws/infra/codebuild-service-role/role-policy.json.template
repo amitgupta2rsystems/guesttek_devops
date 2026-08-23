@@ -1,0 +1,67 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudWatchLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": [
+        "arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:/aws/codebuild/${CODEBUILD_PROJECT_NAME}",
+        "arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:/aws/codebuild/${CODEBUILD_PROJECT_NAME}:*"
+      ]
+    },
+    {
+      "Sid": "CodeConnections",
+      "Effect": "Allow",
+      "Action": [
+        "codeconnections:GetConnectionToken",
+        "codeconnections:GetConnection",
+        "codeconnections:UseConnection",
+        "codestar-connections:GetConnectionToken",
+        "codestar-connections:GetConnection",
+        "codestar-connections:UseConnection"
+      ],
+      "Resource": [
+        "${CODECONNECTIONS_ARN}",
+        "arn:aws:codestar-connections:${AWS_REGION}:${AWS_ACCOUNT_ID}:connection/${CODECONNECTIONS_ID}"
+      ]
+    },
+    {
+      "Sid": "ReadGitSshSecret",
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue"],
+      "Resource": [
+        "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:guesttek/git-ssh-key*",
+        "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:guesttek/git-ssh-key-codebuild*"
+      ]
+    },
+    {
+      "Sid": "ReadEdgeBundles",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:ListBucket"],
+      "Resource": [
+        "arn:aws:s3:::${BUNDLES_BUCKET}",
+        "arn:aws:s3:::${BUNDLES_BUCKET}/*"
+      ]
+    },
+    {
+      "Sid": "WriteBuildArtifacts",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:GetBucketAcl",
+        "s3:GetBucketLocation",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${ARTIFACTS_BUCKET}",
+        "arn:aws:s3:::${ARTIFACTS_BUCKET}/*"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListCodeBuildProjects",
+      "Effect": "Allow",
+      "Action": ["codebuild:ListProjects"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "StartAndMonitorCamsuiteEdgeBuild",
+      "Effect": "Allow",
+      "Action": [
+        "codebuild:StartBuild",
+        "codebuild:StopBuild",
+        "codebuild:BatchGetBuilds",
+        "codebuild:ListBuildsForProject",
+        "codebuild:BatchGetProjects"
+      ],
+      "Resource": [
+        "arn:aws:codebuild:${AWS_REGION}:${AWS_ACCOUNT_ID}:project/${CODEBUILD_PROJECT_NAME}",
+        "arn:aws:codebuild:${AWS_REGION}:${AWS_ACCOUNT_ID}:project/guesttek-github-codebuild",
+        "arn:aws:codebuild:${AWS_REGION}:${AWS_ACCOUNT_ID}:build/${CODEBUILD_PROJECT_NAME}:*",
+        "arn:aws:codebuild:${AWS_REGION}:${AWS_ACCOUNT_ID}:build/guesttek-github-codebuild:*"
+      ]
+    },
+    {
+      "Sid": "ReadBuildLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:GetLogEvents",
+        "logs:FilterLogEvents",
+        "logs:DescribeLogStreams",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": [
+        "arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:/aws/codebuild/${CODEBUILD_PROJECT_NAME}",
+        "arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:/aws/codebuild/${CODEBUILD_PROJECT_NAME}:*",
+        "arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:/aws/codebuild/guesttek-github-codebuild",
+        "arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:/aws/codebuild/guesttek-github-codebuild:*"
+      ]
+    },
+    {
+      "Sid": "S3ConsoleBucketRead",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketVersioning",
+        "s3:GetBucketEncryption",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketPolicyStatus",
+        "s3:GetBucketTagging",
+        "s3:GetBucketAcl",
+        "s3:GetBucketLifecycleConfiguration"
+      ],
+      "Resource": "arn:aws:s3:::${ARTIFACTS_BUCKET}"
+    },
+    {
+      "Sid": "S3ConsoleBucketList",
+      "Effect": "Allow",
+      "Action": ["s3:ListAllMyBuckets", "s3:GetBucketLocation"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DownloadArtifacts",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:ListBucket"],
+      "Resource": [
+        "arn:aws:s3:::${ARTIFACTS_BUCKET}",
+        "arn:aws:s3:::${ARTIFACTS_BUCKET}/${CODEBUILD_PROJECT_NAME}/*",
+        "arn:aws:s3:::${ARTIFACTS_BUCKET}/guesttek-github-codebuild/*"
+      ]
+    }
+  ]
+}
