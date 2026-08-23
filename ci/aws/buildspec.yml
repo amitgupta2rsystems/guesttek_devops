@@ -14,37 +14,75 @@ env:
 phases:
   install:
     commands:
-      - apt-get update -qq
-      - apt-get install -y -qq git openssh-client patch jq python3 debhelper dpkg-dev fakeroot
-      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
-      - timeout 15 sh -c "until docker info; do sleep 1; done"
-      - chmod +x $CODEBUILD_SRC_DIR/ci/aws/*.sh $CODEBUILD_SRC_DIR/scripts/*.sh
+      - |
+        echo "=============================="
+        echo " STAGE: Setup"
+        echo "=============================="
+        apt-get update -qq
+        apt-get install -y -qq git openssh-client patch jq python3 debhelper dpkg-dev fakeroot
+        nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
+        timeout 15 sh -c "until docker info; do sleep 1; done"
+        chmod +x $CODEBUILD_SRC_DIR/ci/aws/*.sh $CODEBUILD_SRC_DIR/scripts/*.sh
 
   pre_build:
     commands:
-      - $CODEBUILD_SRC_DIR/ci/aws/prepare-orchestration.sh
-      - $CODEBUILD_SRC_DIR/ci/aws/setup-git-ssh.sh
-      - CLONE_ROOT=$CLONE_ROOT BUNDLES_BUCKET=$BUNDLES_BUCKET BUNDLES_PREFIX=$BUNDLES_PREFIX $CODEBUILD_SRC_DIR/ci/aws/fetch-packaging-repos.sh
+      - |
+        echo "=============================="
+        echo " STAGE: Prepare"
+        echo "=============================="
+        $CODEBUILD_SRC_DIR/ci/aws/prepare-orchestration.sh
+        $CODEBUILD_SRC_DIR/ci/aws/setup-git-ssh.sh
+        CLONE_ROOT=$CLONE_ROOT BUNDLES_BUCKET=$BUNDLES_BUCKET BUNDLES_PREFIX=$BUNDLES_PREFIX \
+          $CODEBUILD_SRC_DIR/ci/aws/fetch-packaging-repos.sh
 
   build:
     commands:
-      - $CODEBUILD_SRC_DIR/ci/aws/clone-service-repos.sh
-      - ORCHESTRATION_SRC=$CODEBUILD_SRC_DIR CLONE_ROOT=$CLONE_ROOT $CODEBUILD_SRC_DIR/ci/aws/apply-local-patches.sh
-      - export PLATFORM=$PLATFORM
-      - CLONE_ROOT=$CLONE_ROOT PLATFORM=$PLATFORM $CODEBUILD_SRC_DIR/ci/aws/build-docker-services.sh
-      - CLONE_ROOT=$CLONE_ROOT $CODEBUILD_SRC_DIR/ci/aws/seed-assemble-configs.sh
-      - CLONE_ROOT=$CLONE_ROOT CAMSUITE_BUNDLE_ARCH=$CAMSUITE_BUNDLE_ARCH $CODEBUILD_SRC_DIR/ci/aws/package-deb.sh
-      - ORCHESTRATION_SRC=$CODEBUILD_SRC_DIR CLONE_ROOT=$CLONE_ROOT PLATFORM=$PLATFORM $CODEBUILD_SRC_DIR/ci/aws/generate-release-manifest.sh
+      - |
+        echo "=============================="
+        echo " STAGE: Clone"
+        echo "=============================="
+        $CODEBUILD_SRC_DIR/ci/aws/clone-service-repos.sh
+      - |
+        echo "=============================="
+        echo " STAGE: Patch"
+        echo "=============================="
+        ORCHESTRATION_SRC=$CODEBUILD_SRC_DIR CLONE_ROOT=$CLONE_ROOT \
+          $CODEBUILD_SRC_DIR/ci/aws/apply-local-patches.sh
+      - |
+        echo "=============================="
+        echo " STAGE: Docker"
+        echo "=============================="
+        export PLATFORM=$PLATFORM
+        CLONE_ROOT=$CLONE_ROOT PLATFORM=$PLATFORM \
+          $CODEBUILD_SRC_DIR/ci/aws/build-docker-services.sh
+      - |
+        echo "=============================="
+        echo " STAGE: Package"
+        echo "=============================="
+        CLONE_ROOT=$CLONE_ROOT $CODEBUILD_SRC_DIR/ci/aws/seed-assemble-configs.sh
+        CLONE_ROOT=$CLONE_ROOT CAMSUITE_BUNDLE_ARCH=$CAMSUITE_BUNDLE_ARCH \
+          $CODEBUILD_SRC_DIR/ci/aws/package-deb.sh
+      - |
+        echo "=============================="
+        echo " STAGE: Manifest"
+        echo "=============================="
+        ORCHESTRATION_SRC=$CODEBUILD_SRC_DIR CLONE_ROOT=$CLONE_ROOT PLATFORM=$PLATFORM \
+          $CODEBUILD_SRC_DIR/ci/aws/generate-release-manifest.sh
 
   post_build:
     commands:
-      - echo Orchestration dir $ORCHESTRATION_DIR
-      - mkdir -p $CODEBUILD_SRC_DIR/out
-      - cp -v $CLONE_ROOT/*.deb $CLONE_ROOT/*.changes $CLONE_ROOT/*.buildinfo $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
-      - cp -v $CLONE_ROOT/deploy/guesttek-camsuite-edge-*.tar $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
-      - cp -v $CLONE_ROOT/release-manifest.yaml $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
-      - ls -lah $CODEBUILD_SRC_DIR/out || true
-      - echo Build completed
+      - |
+        echo "=============================="
+        echo " STAGE: Publish"
+        echo "=============================="
+        mkdir -p $CODEBUILD_SRC_DIR/out
+        cp -v $CLONE_ROOT/*.deb $CLONE_ROOT/*.changes $CLONE_ROOT/*.buildinfo $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
+        cp -v $CLONE_ROOT/deploy/guesttek-camsuite-edge-*.tar $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
+        cp -v $CLONE_ROOT/guesttek-camsuite-edge/docker/camsuite-images-*.tar $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
+        cp -v $CLONE_ROOT/release-manifest.yaml $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
+        echo "Artifacts in $CODEBUILD_SRC_DIR/out:"
+        ls -lah $CODEBUILD_SRC_DIR/out || true
+        echo "Build completed"
 
 artifacts:
   files:
