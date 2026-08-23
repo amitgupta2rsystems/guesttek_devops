@@ -1,0 +1,62 @@
+diff --git a/build-docker.sh b/build-docker.sh
+index 7c8e458..e776fce 100755
+--- a/build-docker.sh
++++ b/build-docker.sh
+@@ -2,11 +2,13 @@
+ # Build script for AI Suspicious Objects Inference Service Docker image
+ # Usage: ./build-docker.sh
+ 
+-set -e
++set -euo pipefail
++
++PLATFORM="${PLATFORM:-linux/arm64}"
+ 
+ TODAY=$(date +%Y%m%d)
+ TAG="inference-${TODAY}"
+-LOCAL_REGISTRY_IMAGE="192.168.1.8:5000/wasp:${TAG}"
++IMAGE_REF="camsuite:${TAG}"
+ 
+ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ RING_BUFFER_DIR="${SCRIPT_DIR}/.ring_buffer"
+@@ -27,23 +29,31 @@ else
+   git clone --depth 1 git@github.com:wasp-innovation-ai/ring_buffer.git "${RING_BUFFER_DIR}"
+ fi
+ 
++EXTRA_ARGS=()
++if [[ "${PLATFORM}" == *","* ]]; then
++  echo ""
++  echo "Multi-arch build: using --push (configure buildx output destination)."
++  EXTRA_ARGS+=(--push)
++else
++  EXTRA_ARGS+=(--load)
++fi
++
+ echo ""
+-echo "Building Docker image: ${LOCAL_REGISTRY_IMAGE}"
+-echo "Platform: linux/arm64"
++echo "Building Docker image: ${IMAGE_REF}"
++echo "Platform(s): ${PLATFORM}"
+ echo ""
+ 
+ docker buildx build \
+-  --platform linux/arm64 \
+-  -t "${LOCAL_REGISTRY_IMAGE}" \
++  --platform "${PLATFORM}" \
++  "${EXTRA_ARGS[@]}" \
++  -t "${IMAGE_REF}" \
+   "${SCRIPT_DIR}"
+ 
+ echo ""
+ echo "Build complete!"
+ echo ""
+-echo "Image: ${LOCAL_REGISTRY_IMAGE}"
+-echo ""
+-echo "To push to local registry:"
+-echo "  docker push ${LOCAL_REGISTRY_IMAGE}"
++echo "Image: ${IMAGE_REF}"
+ echo ""
++
+ echo "To run with docker compose:"
+-echo "  docker compose up -d"
++echo "  docker compose up -d"
+\ No newline at end of file

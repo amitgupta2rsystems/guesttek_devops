@@ -1,0 +1,12 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 9c7e5a4..393fa20 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -1,6 +1,6 @@
+ services:
+   alert-manager:
+-    image: goby.intercept.ing:5000/wasp:alert-manager-${DATE_TAG}
++    image: camsuite:alert-manager-${DATE_TAG}
+     restart: unless-stopped
+     network_mode: host
+     environment:

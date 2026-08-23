@@ -1,0 +1,30 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+index ac0fa78..ca09206 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -1,6 +1,6 @@
+ services:
+   inference:
+-    image: ${DOCKER_REGISTRY}/wasp:inference-${DATE_TAG}
++    image: camsuite:inference-${DATE_TAG}
+     restart: unless-stopped
+     network_mode: host
+     environment:
+@@ -17,7 +17,7 @@ services:
+       ZMQ_MODEL_OTA_URL: "${ZMQ_MODEL_OTA_URL:-ipc:///tmp/zmq/ai_model_ota}"
+       ZMQ_MODEL_STATUS_URL: "${ZMQ_MODEL_STATUS_URL:-ipc:///tmp/zmq/ai_model_status}"
+       ZMQ_MODEL_EVENTS_URL: "${ZMQ_MODEL_EVENTS_URL:-ipc:///tmp/zmq/ai_model_events}"
+-      MODEL_OTA_DIR: "${MODEL_OTA_DIR:-/model_ota}"
++      MODEL_OTA_DIR: "${MODEL_OTA_DIR:-/var/guesttek-camsuite-edge/model_ota}"
+       MODEL_STATS_PATH: "${MODEL_STATS_PATH:-/var/lib/inference_service/model_stats.json}"
+       # Two-stage cascade: a full-frame pass at 864x480, then a 640x640 pass on
+       # a crop around each person. Set STAGE_1_MODEL_PATH empty to run
+@@ -29,7 +29,7 @@ services:
+     volumes:
+       - /dev/shm:/dev/shm
+       - /tmp/zmq:/tmp/zmq
+-      - /model_ota:/model_ota
++      - /var/guesttek-camsuite-edge/model_ota:/var/guesttek-camsuite-edge/model_ota
+       - model_stats:/var/lib/inference_service
+       # Hailo SDK (bind-mount from host — version must match kernel driver)
+       - /usr/lib/python3/dist-packages/hailo_platform:/usr/lib/python3/dist-packages/hailo_platform:ro

@@ -1,0 +1,11 @@
+# 001 = inference (Smriti build-docker — includes IMAGE_REF)
+001-inference-smriti-build-docker.patch|suspicious_objects_inference_service
+001b-inference-smriti-docker-compose.patch|suspicious_objects_inference_service
+# 002 = alert (Smriti)
+002-alert-smriti-build-docker.patch|alert_manager_service
+002b-alert-smriti-docker-compose.patch|alert_manager_service
+# 003 = provisioning exit-code footgun
+003-provisioning-build-docker-exit-code.patch
+# 004 = video-capture registry tag → camsuite: (amd64 bundle / save-images.sh)
+004-video-capture-camsuite-image-tag.patch|camsuite-emb-video-capture
+004b-video-capture-docker-compose.patch|camsuite-emb-video-capture

@@ -1,0 +1,10 @@
+--- a/camsuite-emb-provisioning/build-docker.sh
++++ b/camsuite-emb-provisioning/build-docker.sh
+@@ -116,4 +116,6 @@
+ echo "Build complete!"
+ echo ""
+ echo "Run on this machine (no registry): docker compose up"
+-[[ -n "${REGISTRY_IMAGE}" ]] && echo "Push: docker push \"${REGISTRY_IMAGE}\""
++if [[ -n "${REGISTRY_IMAGE}" ]]; then
++  echo "Push: docker push \"${REGISTRY_IMAGE}\""
++fi

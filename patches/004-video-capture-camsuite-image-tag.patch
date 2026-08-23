@@ -1,0 +1,50 @@
+diff --git a/build-docker.sh b/build-docker.sh
+--- a/build-docker.sh
++++ b/build-docker.sh
+@@ -2,7 +2,7 @@
+ # Build script for Video Capture (C++) Docker image
+ # Usage: ./build-docker.sh
+ #
+-# Builds container image(s), tags registry.guesttek-camsuite.local:5000/camsuite:video-capture-cpp-YYYYMMDD,
++# Tags: camsuite:video-capture-cpp-<YYYYMMDD>
+ # and updates DATE_TAG in .env when present (same directory).
+ #
+ # PLATFORM (env): comma-separated docker platforms. Default: linux/arm64
+@@ -19,7 +19,7 @@ PLATFORM="${PLATFORM:-linux/arm64}"
+ 
+ TODAY=$(date +%Y%m%d)
+ TAG="video-capture-cpp-${TODAY}"
+-LOCAL_REGISTRY_IMAGE="registry.guesttek-camsuite.local:5000/camsuite:${TAG}"
++IMAGE_REF="camsuite:${TAG}"
+ 
+ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ ENV_FILE="${SCRIPT_DIR}/.env"
+@@ -34,14 +34,14 @@ else
+ fi
+ 
+ echo ""
+-echo "Building Docker image: ${LOCAL_REGISTRY_IMAGE}"
++echo "Building Docker image: ${IMAGE_REF}"
+ echo "Platform(s): ${PLATFORM}"
+ echo ""
+ 
+ docker buildx build \
+   --platform "${PLATFORM}" \
+   "${EXTRA_ARGS[@]}" \
+-  -t "${LOCAL_REGISTRY_IMAGE}" \
++  -t "${IMAGE_REF}" \
+   "${SCRIPT_DIR}"
+ 
+ if [ -f "${ENV_FILE}" ]; then
+@@ -58,10 +58,8 @@ fi
+ echo ""
+ echo "Build complete!"
+ echo ""
+-echo "Image: ${LOCAL_REGISTRY_IMAGE}"
++echo "Image: ${IMAGE_REF}"
+ echo ""
+-echo "To push to local registry:"
+-echo "  docker push ${LOCAL_REGISTRY_IMAGE}"
+ echo ""
+ echo "To run with docker compose:"
+ echo "  docker compose up -d"
