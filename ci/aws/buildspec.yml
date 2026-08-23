@@ -6,13 +6,16 @@ env:
     GIT_SSH_SECRET_NAME: guesttek/git-ssh-key
     CLONE_ROOT: /tmp/repos
     ORCHESTRATION_DIR: /tmp/repos/guesttek_devops
+    PLATFORM: amd64
 
 phases:
   install:
     commands:
       - apt-get update -qq
-      - apt-get install -y -qq git openssh-client
-      - chmod +x $CODEBUILD_SRC_DIR/ci/aws/setup-git-ssh.sh $CODEBUILD_SRC_DIR/ci/aws/clone-service-repos.sh $CODEBUILD_SRC_DIR/ci/aws/prepare-orchestration.sh
+      - apt-get install -y -qq git openssh-client patch
+      - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
+      - timeout 15 sh -c "until docker info; do sleep 1; done"
+      - chmod +x $CODEBUILD_SRC_DIR/ci/aws/*.sh
 
   pre_build:
     commands:
@@ -22,6 +25,9 @@ phases:
   build:
     commands:
       - $CODEBUILD_SRC_DIR/ci/aws/clone-service-repos.sh
+      - ORCHESTRATION_SRC=$CODEBUILD_SRC_DIR CLONE_ROOT=$CLONE_ROOT $CODEBUILD_SRC_DIR/ci/aws/apply-local-patches.sh
+      - export PLATFORM=$PLATFORM
+      - CLONE_ROOT=$CLONE_ROOT PLATFORM=$PLATFORM $CODEBUILD_SRC_DIR/ci/aws/build-docker-services.sh
 
   post_build:
     commands:
@@ -31,4 +37,4 @@ phases:
 artifacts:
   files:
     - '**/*'
-  name: orchestration-and-services-clone
+  name: camsuite-edge-docker-builds
