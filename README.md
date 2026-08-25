@@ -11,4 +11,6 @@ Orchestration recipes for GuestTek edge CodeBuild (fetch/clone only).
 
 ## Policy
 
-CodeBuild clones are **read-only**. Do not commit or push to service GitHub/Bitbucket remotes from CI.
+CodeBuild clones of **service** remotes are **read-only**. Do not commit or push to those GitHub/Bitbucket remotes from CI.
+
+After a successful build, CodeBuild may push generated `repos-manifest.yaml` / `release-manifest.yaml` back to `amitgupta2rsystems/guesttek_devops` using `guesttek/git-ssh-key-codebuild` (`ci/aws/push-repos-manifest.sh`).

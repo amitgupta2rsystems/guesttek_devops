@@ -4,12 +4,15 @@ env:
   shell: bash
   variables:
     GIT_SSH_SECRET_NAME: guesttek/git-ssh-key
+    GIT_SSH_WRITE_SECRET_NAME: guesttek/git-ssh-key-codebuild
     CLONE_ROOT: /tmp/repos
     ORCHESTRATION_DIR: /tmp/repos/guesttek_devops
     PLATFORM: amd64
     CAMSUITE_BUNDLE_ARCH: amd64
     BUNDLES_BUCKET: guesttek-edge-bundles-705959604310
     BUNDLES_PREFIX: guesttek/bundles/
+    MANIFEST_REPO_URL: git@github.com:amitgupta2rsystems/guesttek_devops.git
+    MANIFEST_PUSH_BRANCH: main
 
 phases:
   install:
@@ -83,6 +86,14 @@ phases:
         cp -v $CLONE_ROOT/release-manifest.yaml $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
         echo "Artifacts in $CODEBUILD_SRC_DIR/out:"
         ls -lah $CODEBUILD_SRC_DIR/out || true
+        echo "=============================="
+        echo " STAGE: Push manifests"
+        echo "=============================="
+        CLONE_ROOT=$CLONE_ROOT \
+          GIT_SSH_WRITE_SECRET_NAME=$GIT_SSH_WRITE_SECRET_NAME \
+          MANIFEST_REPO_URL=$MANIFEST_REPO_URL \
+          MANIFEST_PUSH_BRANCH=$MANIFEST_PUSH_BRANCH \
+          $CODEBUILD_SRC_DIR/ci/aws/push-repos-manifest.sh
         echo "Build completed"
 
 artifacts:
