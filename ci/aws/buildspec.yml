@@ -79,6 +79,7 @@ phases:
         cp -v $CLONE_ROOT/*.deb $CLONE_ROOT/*.changes $CLONE_ROOT/*.buildinfo $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
         cp -v $CLONE_ROOT/deploy/guesttek-camsuite-edge-*.tar $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
         cp -v $CLONE_ROOT/guesttek-camsuite-edge/docker/camsuite-images-*.tar $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
+        cp -v $CLONE_ROOT/repos-manifest.yaml $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
         cp -v $CLONE_ROOT/release-manifest.yaml $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
         echo "Artifacts in $CODEBUILD_SRC_DIR/out:"
         ls -lah $CODEBUILD_SRC_DIR/out || true
