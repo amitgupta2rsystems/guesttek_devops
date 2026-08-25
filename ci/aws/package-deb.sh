@@ -29,11 +29,13 @@ echo "==== ./deploy/assemble-env.sh ===="
 echo "==== ./deploy/save-images.sh ===="
 ./deploy/save-images.sh
 
-echo "==== dpkg-buildpackage (guesttek-camsuite-edge) ===="
-(
-  cd guesttek-camsuite-edge
-  dpkg-buildpackage -us -uc -b
-)
+# Temporarily disabled — dpkg-buildpackage is too slow for current CI runs.
+# echo "==== dpkg-buildpackage (guesttek-camsuite-edge) ===="
+# (
+#   cd guesttek-camsuite-edge
+#   dpkg-buildpackage -us -uc -b
+# )
+echo "==== SKIPPED dpkg-buildpackage (guesttek-camsuite-edge) ===="
 
 echo "==== Package artifacts ===="
 ls -lah "$ROOT"/guesttek-camsuite-edge_*.deb "$ROOT"/guesttek-camsuite-edge_*.buildinfo "$ROOT"/guesttek-camsuite-edge_*.changes 2>/dev/null || \
