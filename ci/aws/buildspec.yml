@@ -3,7 +3,7 @@ version: 0.2
 env:
   shell: bash
   variables:
-    GIT_SSH_SECRET_NAME: guesttek/git-ssh-key
+    GIT_SSH_PARAM: /guesttek/codebuild/git-ssh-private-key
     CLONE_ROOT: /tmp/repos
     ORCHESTRATION_DIR: /tmp/repos/guesttek_devops
     PLATFORM: amd64

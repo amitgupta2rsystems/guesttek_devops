@@ -58,7 +58,7 @@ After the Build stage, **LabSmoke** SSHs to the lab EC2 host and runs `lab-smoke
 cd ci/aws/infra
 cp config.env.example config.env   # if needed
 
-./create-lab-smoke-ssh-secret.sh   # ~/.ssh/id_ed25519 → Secrets Manager
+./create-lab-smoke-ssh-param.sh    # ~/.ssh/id_ed25519 → SSM SecureString
 ./create-lab-smoke-codebuild-project.sh
 ./update-codepipeline-labsmoke.sh
 
@@ -97,6 +97,8 @@ cd ci/aws/infra
 
 ## Notes
 
+- Git deploy key: SSM `/guesttek/codebuild/git-ssh-private-key` (`./create-git-ssh-param.sh`)
+- Lab smoke SSH key: SSM `/guesttek/lab-smoke/ssh-private-key` (`./create-lab-smoke-ssh-param.sh`)
 - Service repo clones remain **read-only** (never commit/push from CodeBuild).
 - Build archive: `s3://guesttek-camsuite-edge-artifacts-<account>/builds/dev_1.0.0-1/`
 - Published release (one latest): `s3://guesttek-camsuite-edge-artifacts-<account>/guesttek-camsuite-edge/dev_1.0.0-1/`

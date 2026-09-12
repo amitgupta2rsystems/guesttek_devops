@@ -10,7 +10,7 @@ LAB_SMOKE_PROJECT_NAME="${LAB_SMOKE_PROJECT_NAME:-guesttek-camsuite-edge-lab-smo
 LAB_SMOKE_ROLE_NAME="${LAB_SMOKE_ROLE_NAME:-codebuild-guesttek-camsuite-edge-lab-smoke-role}"
 LAB_SMOKE_HOST="${LAB_SMOKE_HOST:-43.204.233.245}"
 LAB_SMOKE_USER="${LAB_SMOKE_USER:-ubuntu}"
-LAB_SMOKE_SSH_SECRET="${LAB_SMOKE_SSH_SECRET:-guesttek/lab-smoke-ssh-key}"
+LAB_SMOKE_SSH_PARAM="${LAB_SMOKE_SSH_PARAM:-/guesttek/lab-smoke/ssh-private-key}"
 BUILDSPEC_PATH="${SCRIPT_DIR}/../buildspec-lab-smoke.yml"
 SMOKE_SCRIPT="${SCRIPT_DIR}/../../jenkins/lab-smoke-test.sh"
 
@@ -74,8 +74,8 @@ POLICY=$(cat <<EOF
     {
       "Sid": "ReadLabSmokeSshKey",
       "Effect": "Allow",
-      "Action": ["secretsmanager:GetSecretValue"],
-      "Resource": "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:${LAB_SMOKE_SSH_SECRET}*"
+      "Action": ["ssm:GetParameter", "ssm:GetParameters"],
+      "Resource": "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/guesttek/lab-smoke/*"
     }
   ]
 }
@@ -86,7 +86,7 @@ aws iam put-role-policy --role-name "$LAB_SMOKE_ROLE_NAME" \
   --policy-document "$POLICY"
 
 ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${LAB_SMOKE_ROLE_NAME}"
-export ROLE_ARN LAB_SMOKE_PROJECT_NAME LAB_SMOKE_HOST LAB_SMOKE_USER LAB_SMOKE_SSH_SECRET BUNDLES_BUCKET ARTIFACTS_BUCKET AWS_ACCOUNT_ID
+export ROLE_ARN LAB_SMOKE_PROJECT_NAME LAB_SMOKE_HOST LAB_SMOKE_USER LAB_SMOKE_SSH_PARAM BUNDLES_BUCKET ARTIFACTS_BUCKET AWS_ACCOUNT_ID
 export S3_ARTIFACT_URI="${S3_ARTIFACT_URI:-}"
 export BUILDSPEC
 BUILDSPEC=$(python3 -c "import json, pathlib; print(json.dumps(pathlib.Path('${BUILDSPEC_PATH}').read_text()))")
@@ -113,7 +113,7 @@ print(json.dumps({
     "environmentVariables": [
       {"name": "LAB_SMOKE_HOST", "value": os.environ["LAB_SMOKE_HOST"], "type": "PLAINTEXT"},
       {"name": "LAB_SMOKE_USER", "value": os.environ["LAB_SMOKE_USER"], "type": "PLAINTEXT"},
-      {"name": "LAB_SMOKE_SSH_SECRET", "value": os.environ["LAB_SMOKE_SSH_SECRET"], "type": "PLAINTEXT"},
+      {"name": "LAB_SMOKE_SSH_PARAM", "value": os.environ["LAB_SMOKE_SSH_PARAM"], "type": "PLAINTEXT"},
       {"name": "LAB_SMOKE_SCRIPT_S3", "value": f"s3://{os.environ['BUNDLES_BUCKET']}/guesttek/ci/lab-smoke-test.sh", "type": "PLAINTEXT"},
       {"name": "LAB_SMOKE_REMOTE_S3", "value": f"s3://{os.environ['BUNDLES_BUCKET']}/guesttek/ci/ec2-lab-smoke-remote.sh", "type": "PLAINTEXT"},
       {"name": "ARTIFACTS_BUCKET", "value": os.environ.get("ARTIFACTS_BUCKET", f"guesttek-camsuite-edge-artifacts-{os.environ['AWS_ACCOUNT_ID']}"), "type": "PLAINTEXT"},

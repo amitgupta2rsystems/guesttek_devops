@@ -31,12 +31,11 @@
       ]
     },
     {
-      "Sid": "ReadGitSshSecret",
+      "Sid": "ReadGitSshKey",
       "Effect": "Allow",
-      "Action": ["secretsmanager:GetSecretValue"],
+      "Action": ["ssm:GetParameter", "ssm:GetParameters"],
       "Resource": [
-        "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:guesttek/git-ssh-key*",
-        "arn:aws:secretsmanager:${AWS_REGION}:${AWS_ACCOUNT_ID}:secret:guesttek/git-ssh-key-codebuild*"
+        "arn:aws:ssm:${AWS_REGION}:${AWS_ACCOUNT_ID}:parameter/guesttek/codebuild/*"
       ]
     },
     {

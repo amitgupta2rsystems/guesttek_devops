@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# Load deploy key from AWS Secrets Manager and configure SSH for Bitbucket + GitHub.
+# Load deploy key from SSM Parameter Store and configure SSH for Bitbucket + GitHub.
 set -euo pipefail
 
-SECRET_NAME="${GIT_SSH_SECRET_NAME:-guesttek/git-ssh-key}"
+PARAM_NAME="${GIT_SSH_PARAM:-/guesttek/codebuild/git-ssh-private-key}"
 REGION="${AWS_DEFAULT_REGION:-${AWS_REGION:-ap-south-1}}"
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 
-aws secretsmanager get-secret-value \
-  --secret-id "$SECRET_NAME" \
+aws ssm get-parameter \
+  --name "$PARAM_NAME" \
+  --with-decryption \
   --region "$REGION" \
-  --query SecretString \
+  --query Parameter.Value \
   --output text | tr -d '\r' > ~/.ssh/id_ed25519
 chmod 600 ~/.ssh/id_ed25519
 

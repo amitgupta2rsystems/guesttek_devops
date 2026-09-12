@@ -10,9 +10,9 @@ version: 0.2
 env:
   shell: bash
   variables:
-    LAB_SMOKE_HOST: "43.204.233.245"
+    LAB_SMOKE_HOST: "13.201.130.250"
     LAB_SMOKE_USER: "ubuntu"
-    LAB_SMOKE_SSH_SECRET: "guesttek/lab-smoke-ssh-key"
+    LAB_SMOKE_SSH_PARAM: "/guesttek/lab-smoke/ssh-private-key"
     LAB_SMOKE_SCRIPT_S3: "s3://guesttek-edge-bundles-705959604310/guesttek/ci/lab-smoke-test.sh"
     LAB_SMOKE_REMOTE_S3: "s3://guesttek-edge-bundles-705959604310/guesttek/ci/ec2-lab-smoke-remote.sh"
     DEV_BUILD_ID_SCRIPT_S3: "s3://guesttek-edge-bundles-705959604310/guesttek/ci/resolve-dev-build-id.sh"
@@ -119,10 +119,12 @@ phases:
         mkdir -p ~/.ssh
         ssh-keyscan -H "$LAB_SMOKE_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-        aws secretsmanager get-secret-value \
-          --secret-id "$LAB_SMOKE_SSH_SECRET" \
+        aws ssm get-parameter \
+          --name "$LAB_SMOKE_SSH_PARAM" \
+          --with-decryption \
           --region "$AWS_REGION" \
-          --query SecretString --output text > /tmp/lab-smoke-ssh-key
+          --query Parameter.Value \
+          --output text | tr -d '\r' > /tmp/lab-smoke-ssh-key
         chmod 600 /tmp/lab-smoke-ssh-key
 
         SSH_OPTS=(-o BatchMode=yes -o StrictHostKeyChecking=yes -i /tmp/lab-smoke-ssh-key)

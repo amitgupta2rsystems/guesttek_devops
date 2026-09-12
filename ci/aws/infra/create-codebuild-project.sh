@@ -11,7 +11,7 @@ START_BUILD="${START_BUILD:-0}"
 ROLE_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:role/${CODEBUILD_ROLE_NAME}"
 export ROLE_ARN CODEBUILD_PROJECT_NAME ORCHESTRATION_REPO CODECONNECTIONS_ARN \
   ARTIFACTS_BUCKET CODEBUILD_COMPUTE_TYPE CODEBUILD_TIMEOUT_MINUTES \
-  GIT_SSH_SECRET_NAME BUNDLES_BUCKET BUNDLES_PREFIX BUILDS_ARCHIVE_PREFIX RELEASE_PREFIX
+  GIT_SSH_PARAM BUNDLES_BUCKET BUNDLES_PREFIX BUILDS_ARCHIVE_PREFIX RELEASE_PREFIX
 
 BUILDSPEC_PATH="${SCRIPT_DIR}/../buildspec.yml"
 DEV_BUILD_ID_SCRIPT="${SCRIPT_DIR}/../resolve-dev-build-id.sh"
@@ -48,7 +48,7 @@ print(json.dumps({
     "privilegedMode": True,
     "imagePullCredentialsType": "CODEBUILD",
     "environmentVariables": [
-      {"name": "GIT_SSH_SECRET_NAME", "value": os.environ["GIT_SSH_SECRET_NAME"], "type": "PLAINTEXT"},
+      {"name": "GIT_SSH_PARAM", "value": os.environ.get("GIT_SSH_PARAM", "/guesttek/codebuild/git-ssh-private-key"), "type": "PLAINTEXT"},
       {"name": "CLONE_ROOT", "value": "/tmp/repos", "type": "PLAINTEXT"},
       {"name": "ORCHESTRATION_DIR", "value": "/tmp/repos/guesttek_devops", "type": "PLAINTEXT"},
       {"name": "PLATFORM", "value": "amd64", "type": "PLAINTEXT"},

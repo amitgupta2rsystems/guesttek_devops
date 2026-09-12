@@ -5,7 +5,7 @@ Orchestration recipes for GuestTek edge CodeBuild (fetch/clone only).
 ## Layout
 
 - `ci/aws/buildspec.yml` — CodeBuild buildspec
-- `ci/aws/setup-git-ssh.sh` — load `guesttek/git-ssh-key` and configure SSH
+- `ci/aws/setup-git-ssh.sh` — load Git deploy key from SSM and configure SSH
 - `ci/aws/clone-service-repos.sh` — clone repos from `scripts/service-repos.list`
 - `scripts/service-repos.list` — service remotes (read-only)
 
