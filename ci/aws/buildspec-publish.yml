@@ -1,0 +1,70 @@
+version: 0.2
+
+# Publish — after LabSmoke passes, promote to guesttek-camsuite-edge/<dev_X.Y.Z-N>/
+
+env:
+  shell: bash
+  variables:
+    ARTIFACTS_BUCKET: "guesttek-camsuite-edge-artifacts-705959604310"
+    RELEASE_PREFIX: "guesttek-camsuite-edge"
+    BUILDS_PREFIX: "builds"
+    DEV_BUILD_ID_SCRIPT_S3: "s3://guesttek-edge-bundles-705959604310/guesttek/ci/resolve-dev-build-id.sh"
+
+phases:
+  install:
+    commands:
+      - apt-get update -qq && apt-get install -y -qq zip awscli dpkg-dev
+      - aws s3 cp "$DEV_BUILD_ID_SCRIPT_S3" /tmp/resolve-dev-build-id.sh --region "${AWS_REGION}"
+      - chmod +x /tmp/resolve-dev-build-id.sh
+
+  pre_build:
+    commands:
+      - |
+        echo "=============================="
+        echo " STAGE: Validate build output"
+        echo "=============================="
+        OUT="${CODEBUILD_SRC_DIR}/out"
+        [[ -d "$OUT" ]] || { echo "Missing ${OUT} — run after Build stage" >&2; exit 1; }
+        DEB="$(ls -1 "${OUT}"/guesttek-camsuite-edge_*_amd64.deb 2>/dev/null | head -1)"
+        [[ -n "$DEB" && -f "$DEB" ]] || { echo "Missing .deb under ${OUT}" >&2; exit 1; }
+        echo "Package: $(basename "$DEB")"
+        ls -lah "$OUT"
+
+  build:
+    commands:
+      - |
+        echo "=============================="
+        echo " STAGE: Publish release artifact"
+        echo "=============================="
+        OUT="${CODEBUILD_SRC_DIR}/out"
+        export ARTIFACTS_BUCKET BUILDS_PREFIX RELEASE_PREFIX AWS_REGION
+        DEV_BUILD_ID="$(/tmp/resolve-dev-build-id.sh read)"
+        NEW_KEY="${RELEASE_PREFIX}/${DEV_BUILD_ID}/camsuite-edge-deb"
+        NEW_URI="s3://${ARTIFACTS_BUCKET}/${NEW_KEY}"
+
+        echo "Dev build ID: ${DEV_BUILD_ID}"
+        ( cd "${CODEBUILD_SRC_DIR}" && zip -qr /tmp/camsuite-edge-deb.zip out )
+        ls -lh /tmp/camsuite-edge-deb.zip
+
+        echo "Uploading ${NEW_URI}"
+        aws s3 cp /tmp/camsuite-edge-deb.zip "${NEW_URI}" --region "${AWS_REGION}"
+
+        echo "Removing older published releases under s3://${ARTIFACTS_BUCKET}/${RELEASE_PREFIX}/"
+        echo "(build archives under ${BUILDS_PREFIX}/ are kept regardless of smoke result)"
+        mapfile -t OLD_KEYS < <(
+          aws s3 ls "s3://${ARTIFACTS_BUCKET}/${RELEASE_PREFIX}/" --recursive --region "${AWS_REGION}" \
+            | awk '/camsuite-edge-deb$/ {print $4}'
+        )
+        removed=0
+        for key in "${OLD_KEYS[@]}"; do
+          [[ "$key" == "$NEW_KEY" ]] && continue
+          echo "  delete s3://${ARTIFACTS_BUCKET}/${key}"
+          aws s3 rm "s3://${ARTIFACTS_BUCKET}/${key}" --region "${AWS_REGION}"
+          removed=$((removed + 1))
+        done
+
+        remaining=$(aws s3 ls "s3://${ARTIFACTS_BUCKET}/${RELEASE_PREFIX}/" --recursive --region "${AWS_REGION}" \
+          | awk '/camsuite-edge-deb$/ {c++} END {print c+0}')
+        echo "Removed ${removed} old artifact(s); ${remaining} release artifact(s) remain"
+        [[ "$remaining" -eq 1 ]] || { echo "Expected exactly 1 release artifact" >&2; exit 1; }
+        echo "Release published: ${NEW_URI}"

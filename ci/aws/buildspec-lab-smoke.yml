@@ -1,0 +1,159 @@
+version: 0.2
+
+# LabSmoke — install + validate .deb on lab EC2.
+#
+# Trigger modes:
+#   1) CodePipeline — input artifact BuildOutput extracted under $CODEBUILD_SRC_DIR/out/
+#   2) Standalone — set S3_ARTIFACT_URI (s3://bucket/key to camsuite-edge-deb zip)
+#      or pass --source-type-override S3 --source-location-override bucket/key
+
+env:
+  shell: bash
+  variables:
+    LAB_SMOKE_HOST: "43.204.233.245"
+    LAB_SMOKE_USER: "ubuntu"
+    LAB_SMOKE_SSH_SECRET: "guesttek/lab-smoke-ssh-key"
+    LAB_SMOKE_SCRIPT_S3: "s3://guesttek-edge-bundles-705959604310/guesttek/ci/lab-smoke-test.sh"
+    LAB_SMOKE_REMOTE_S3: "s3://guesttek-edge-bundles-705959604310/guesttek/ci/ec2-lab-smoke-remote.sh"
+    DEV_BUILD_ID_SCRIPT_S3: "s3://guesttek-edge-bundles-705959604310/guesttek/ci/resolve-dev-build-id.sh"
+    ARTIFACTS_BUCKET: "guesttek-camsuite-edge-artifacts-705959604310"
+    RELEASE_PREFIX: "guesttek-camsuite-edge"
+    S3_ARTIFACT_URI: ""
+
+phases:
+  install:
+    commands:
+      - |
+        echo "=============================="
+        echo " STAGE: LabSmoke setup"
+        echo "=============================="
+        apt-get update -qq
+        apt-get install -y -qq openssh-client dpkg-dev unzip awscli
+
+  pre_build:
+    commands:
+      - |
+        echo "=============================="
+        echo " STAGE: Resolve build artifact"
+        echo "=============================="
+        echo "CODEBUILD_SRC_DIR=${CODEBUILD_SRC_DIR}"
+        echo "S3_ARTIFACT_URI=${S3_ARTIFACT_URI:-<not set>}"
+        find "${CODEBUILD_SRC_DIR}" -maxdepth 3 -type f 2>/dev/null | head -30 || true
+
+        ARTIFACT_ROOT="${CODEBUILD_SRC_DIR}/artifact-input"
+        rm -rf "$ARTIFACT_ROOT"
+        mkdir -p "$ARTIFACT_ROOT"
+        rm -f "${CODEBUILD_SRC_DIR}/.standalone_s3"
+
+        # Pipeline or start-build S3 source override: copy/extract into artifact-input
+        if [[ -d "${CODEBUILD_SRC_DIR}/out" ]]; then
+          echo "Using pipeline/source output: ${CODEBUILD_SRC_DIR}/out"
+          cp -a "${CODEBUILD_SRC_DIR}/out/." "$ARTIFACT_ROOT/"
+        elif ls "${CODEBUILD_SRC_DIR}"/*.deb >/dev/null 2>&1; then
+          echo "Using flat source dir: ${CODEBUILD_SRC_DIR}"
+          cp -a "${CODEBUILD_SRC_DIR}/." "$ARTIFACT_ROOT/"
+        else
+          if [[ -z "${S3_ARTIFACT_URI:-}" ]]; then
+            echo "S3_ARTIFACT_URI not set — selecting latest published dev build"
+            aws s3 cp "$DEV_BUILD_ID_SCRIPT_S3" /tmp/resolve-dev-build-id.sh --region "${AWS_REGION}"
+            chmod +x /tmp/resolve-dev-build-id.sh
+            export ARTIFACTS_BUCKET RELEASE_PREFIX AWS_REGION
+            DEV_BUILD_ID="$(/tmp/resolve-dev-build-id.sh latest "${RELEASE_PREFIX}")"
+            S3_ARTIFACT_URI="s3://${ARTIFACTS_BUCKET}/${RELEASE_PREFIX}/${DEV_BUILD_ID}/camsuite-edge-deb"
+            echo "Auto-selected: ${S3_ARTIFACT_URI}"
+          fi
+          echo "Downloading standalone artifact: ${S3_ARTIFACT_URI}"
+          echo "$S3_ARTIFACT_URI" > "${CODEBUILD_SRC_DIR}/.standalone_s3"
+          aws s3 cp "${S3_ARTIFACT_URI}" /tmp/camsuite-edge-deb.zip --region "${AWS_REGION}"
+          unzip -q /tmp/camsuite-edge-deb.zip -d "$ARTIFACT_ROOT"
+        fi
+
+        OUT="$ARTIFACT_ROOT"
+        if [[ -d "${ARTIFACT_ROOT}/out" ]]; then
+          OUT="${ARTIFACT_ROOT}/out"
+        fi
+
+        DEB="$(ls -1 "${OUT}"/guesttek-camsuite-edge_*_amd64.deb 2>/dev/null | head -1)"
+        [[ -n "$DEB" && -f "$DEB" ]] || { echo "Missing .deb under ${OUT}" >&2; exit 1; }
+
+        export ARTIFACTS_DIR="${CODEBUILD_SRC_DIR}/lab-smoke-staging"
+        rm -rf "$ARTIFACTS_DIR"
+        mkdir -p "${ARTIFACTS_DIR}/guesttek-camsuite-edge/docker"
+
+        cp "$DEB" "${ARTIFACTS_DIR}/"
+        cp "${OUT}/release-manifest.yaml" "${ARTIFACTS_DIR}/"
+
+        if [[ -f "${OUT}/camsuite-images-amd64.tar" ]]; then
+          cp "${OUT}/camsuite-images-amd64.tar" "${ARTIFACTS_DIR}/guesttek-camsuite-edge/docker/"
+        elif [[ -f "${OUT}/guesttek-camsuite-edge/docker/camsuite-images-amd64.tar" ]]; then
+          cp "${OUT}/guesttek-camsuite-edge/docker/camsuite-images-amd64.tar" \
+            "${ARTIFACTS_DIR}/guesttek-camsuite-edge/docker/"
+        else
+          echo "Missing camsuite-images-amd64.tar" >&2
+          exit 1
+        fi
+
+        VER="$(dpkg-deb -f "$DEB" Version)"
+        SUMS="${ARTIFACTS_DIR}/SHA256SUMS-amd64-${VER}"
+        {
+          ( cd "$ARTIFACTS_DIR" && sha256sum "$(basename "$DEB")" release-manifest.yaml )
+          ( cd "${ARTIFACTS_DIR}/guesttek-camsuite-edge/docker" && \
+            sha256sum camsuite-images-amd64.tar | \
+            awk '{print $1 "  guesttek-camsuite-edge/docker/camsuite-images-amd64.tar"}' )
+        } > "$SUMS"
+
+        echo "Staged artifacts:"
+        find "$ARTIFACTS_DIR" -type f -exec ls -lh {} \;
+        echo "$ARTIFACTS_DIR" > "${CODEBUILD_SRC_DIR}/.artifacts_dir"
+
+        aws s3 cp "$LAB_SMOKE_SCRIPT_S3" /tmp/lab-smoke-test.sh --region "${AWS_REGION}"
+        chmod +x /tmp/lab-smoke-test.sh
+
+  build:
+    commands:
+      - |
+        echo "=============================="
+        echo " STAGE: Lab smoke on ${LAB_SMOKE_USER}@${LAB_SMOKE_HOST}"
+        echo "=============================="
+
+        mkdir -p ~/.ssh
+        ssh-keyscan -H "$LAB_SMOKE_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+        aws secretsmanager get-secret-value \
+          --secret-id "$LAB_SMOKE_SSH_SECRET" \
+          --region "$AWS_REGION" \
+          --query SecretString --output text > /tmp/lab-smoke-ssh-key
+        chmod 600 /tmp/lab-smoke-ssh-key
+
+        SSH_OPTS=(-o BatchMode=yes -o StrictHostKeyChecking=yes -i /tmp/lab-smoke-ssh-key)
+        REMOTE="${LAB_SMOKE_USER}@${LAB_SMOKE_HOST}"
+
+        aws s3 cp "$LAB_SMOKE_REMOTE_S3" /tmp/ec2-lab-smoke-remote.sh --region "${AWS_REGION}"
+        chmod +x /tmp/ec2-lab-smoke-remote.sh
+
+        set +e
+        if [[ -f "${CODEBUILD_SRC_DIR}/.standalone_s3" ]]; then
+          S3_ARTIFACT_URI="$(cat "${CODEBUILD_SRC_DIR}/.standalone_s3")"
+          echo "Standalone mode: EC2 pulls artifact from S3 (no large SCP from CodeBuild)"
+          scp "${SSH_OPTS[@]}" /tmp/ec2-lab-smoke-remote.sh "${REMOTE}:/tmp/ec2-lab-smoke-remote.sh"
+          ssh "${SSH_OPTS[@]}" "$REMOTE" \
+            "S3_ARTIFACT_URI=${S3_ARTIFACT_URI} AWS_REGION=${AWS_REGION} LAB_SMOKE_SCRIPT_S3=${LAB_SMOKE_SCRIPT_S3} bash /tmp/ec2-lab-smoke-remote.sh"
+          SMOKE_RC=$?
+        else
+          echo "Pipeline mode: CodeBuild stages artifact and SCPs to EC2"
+          ARTIFACTS_DIR="$(cat "${CODEBUILD_SRC_DIR}/.artifacts_dir")"
+          export LAB_SSH_KEY=/tmp/lab-smoke-ssh-key
+          /tmp/lab-smoke-test.sh \
+            --host "$LAB_SMOKE_HOST" \
+            --user "$LAB_SMOKE_USER" \
+            --artifacts-dir "$ARTIFACTS_DIR" \
+            --purge-first
+          SMOKE_RC=$?
+        fi
+        set -e
+
+        if [[ "$SMOKE_RC" -ne 0 ]]; then
+          echo "Lab smoke exited with ${SMOKE_RC}" >&2
+          exit "$SMOKE_RC"
+        fi
+        echo "LabSmoke CodeBuild finished OK"

@@ -10,6 +10,10 @@ env:
     CAMSUITE_BUNDLE_ARCH: amd64
     BUNDLES_BUCKET: guesttek-edge-bundles-705959604310
     BUNDLES_PREFIX: guesttek/bundles/
+    ARTIFACTS_BUCKET: guesttek-camsuite-edge-artifacts-705959604310
+    BUILDS_PREFIX: builds
+    RELEASE_PREFIX: guesttek-camsuite-edge
+    DEV_BUILD_ID_SCRIPT_S3: s3://guesttek-edge-bundles-705959604310/guesttek/ci/resolve-dev-build-id.sh
 
 phases:
   install:
@@ -73,7 +77,7 @@ phases:
     commands:
       - |
         echo "=============================="
-        echo " STAGE: Publish"
+        echo " STAGE: Stage artifacts"
         echo "=============================="
         mkdir -p $CODEBUILD_SRC_DIR/out
         cp -v $CLONE_ROOT/*.deb $CLONE_ROOT/*.changes $CLONE_ROOT/*.buildinfo $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
@@ -82,6 +86,22 @@ phases:
         cp -v $CLONE_ROOT/release-manifest.yaml $CODEBUILD_SRC_DIR/out/ 2>/dev/null || true
         echo "Artifacts in $CODEBUILD_SRC_DIR/out:"
         ls -lah $CODEBUILD_SRC_DIR/out || true
+
+        DEB="$(ls -1 $CODEBUILD_SRC_DIR/out/guesttek-camsuite-edge_*_amd64.deb 2>/dev/null | head -1)"
+        if [[ -n "$DEB" && -f "$DEB" ]]; then
+          echo "=============================="
+          echo " STAGE: Archive build to S3"
+          echo "=============================="
+          aws s3 cp "$DEV_BUILD_ID_SCRIPT_S3" /tmp/resolve-dev-build-id.sh --region "$AWS_REGION"
+          chmod +x /tmp/resolve-dev-build-id.sh
+          export ARTIFACTS_BUCKET BUILDS_PREFIX RELEASE_PREFIX AWS_REGION
+          DEV_BUILD_ID="$(/tmp/resolve-dev-build-id.sh assign "$DEB")"
+          ARCHIVE_URI="s3://${ARTIFACTS_BUCKET}/${BUILDS_PREFIX}/${DEV_BUILD_ID}/camsuite-edge-deb"
+          ( cd "$CODEBUILD_SRC_DIR" && zip -qr /tmp/camsuite-edge-deb.zip out )
+          echo "Dev build ID: ${DEV_BUILD_ID}"
+          echo "Archiving (kept even if LabSmoke fails): ${ARCHIVE_URI}"
+          aws s3 cp /tmp/camsuite-edge-deb.zip "$ARCHIVE_URI" --region "$AWS_REGION"
+        fi
         echo "Build completed"
 
 artifacts:

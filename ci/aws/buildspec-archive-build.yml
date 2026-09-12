@@ -1,0 +1,43 @@
+version: 0.2
+
+# ArchiveBuild — store every build under builds/<dev_X.Y.Z-N>/camsuite-edge-deb
+
+env:
+  shell: bash
+  variables:
+    ARTIFACTS_BUCKET: "guesttek-camsuite-edge-artifacts-705959604310"
+    BUILDS_PREFIX: "builds"
+    RELEASE_PREFIX: "guesttek-camsuite-edge"
+    DEV_BUILD_ID_SCRIPT_S3: "s3://guesttek-edge-bundles-705959604310/guesttek/ci/resolve-dev-build-id.sh"
+
+phases:
+  install:
+    commands:
+      - apt-get update -qq && apt-get install -y -qq zip awscli dpkg-dev
+      - aws s3 cp "$DEV_BUILD_ID_SCRIPT_S3" /tmp/resolve-dev-build-id.sh --region "${AWS_REGION}"
+      - chmod +x /tmp/resolve-dev-build-id.sh
+
+  build:
+    commands:
+      - |
+        echo "=============================="
+        echo " STAGE: Archive build to S3"
+        echo "=============================="
+        OUT="${CODEBUILD_SRC_DIR}/out"
+        [[ -d "$OUT" ]] || { echo "Missing ${OUT}" >&2; exit 1; }
+        DEB="$(ls -1 "${OUT}"/guesttek-camsuite-edge_*_amd64.deb 2>/dev/null | head -1)"
+        [[ -n "$DEB" && -f "$DEB" ]] || { echo "Missing .deb under ${OUT}" >&2; exit 1; }
+
+        export ARTIFACTS_BUCKET BUILDS_PREFIX RELEASE_PREFIX AWS_REGION
+        DEV_BUILD_ID="$(/tmp/resolve-dev-build-id.sh assign "$DEB")"
+        ARCHIVE_KEY="${BUILDS_PREFIX}/${DEV_BUILD_ID}/camsuite-edge-deb"
+        ARCHIVE_URI="s3://${ARTIFACTS_BUCKET}/${ARCHIVE_KEY}"
+
+        echo "Package: $(basename "$DEB") ($(dpkg-deb -f "$DEB" Version))"
+        echo "Dev build ID: ${DEV_BUILD_ID}"
+        ( cd "${CODEBUILD_SRC_DIR}" && zip -qr /tmp/camsuite-edge-deb.zip out )
+        ls -lh /tmp/camsuite-edge-deb.zip
+
+        echo "Archiving (kept even if LabSmoke fails): ${ARCHIVE_URI}"
+        aws s3 cp /tmp/camsuite-edge-deb.zip "${ARCHIVE_URI}" --region "${AWS_REGION}"
+        echo "Build archived: ${ARCHIVE_URI}"

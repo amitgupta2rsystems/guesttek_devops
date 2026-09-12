@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/../lib.sh"
 load_config
 
+export ARTIFACTS_BUCKET BUNDLES_BUCKET CODEBUILD_PROJECT_NAME CODECONNECTIONS_ARN
+
 ROLE_DIR="${SCRIPT_DIR}"
 TMP_POLICY="$(mktemp)"
 trap 'rm -f "$TMP_POLICY"' EXIT

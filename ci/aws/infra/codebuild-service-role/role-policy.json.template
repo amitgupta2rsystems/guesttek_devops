@@ -49,6 +49,21 @@
       ]
     },
     {
+      "Sid": "PipelineArtifacts",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:PutObject",
+        "s3:GetBucketLocation",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::guesttek-edge-pipeline-artifacts-${AWS_ACCOUNT_ID}",
+        "arn:aws:s3:::guesttek-edge-pipeline-artifacts-${AWS_ACCOUNT_ID}/*"
+      ]
+    },
+    {
       "Sid": "WriteBuildArtifacts",
       "Effect": "Allow",
       "Action": [

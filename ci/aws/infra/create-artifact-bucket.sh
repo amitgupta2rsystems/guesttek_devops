@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck source=../lib.sh
-source "${SCRIPT_DIR}/../lib.sh"
+# shellcheck source=lib.sh
+source "${SCRIPT_DIR}/lib.sh"
 load_config
 
 echo "Ensuring artifact bucket: ${ARTIFACTS_BUCKET}"
@@ -24,14 +24,11 @@ aws s3api put-bucket-encryption --bucket "$ARTIFACTS_BUCKET" \
   --server-side-encryption-configuration \
   '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
 
-aws s3api put-bucket-lifecycle-configuration --bucket "$ARTIFACTS_BUCKET" \
-  --lifecycle-configuration '{
-    "Rules": [{
-      "ID": "expire-artifacts-30d",
-      "Status": "Enabled",
-      "Filter": {"Prefix": ""},
-      "Expiration": {"Days": 30}
-    }]
-  }'
+# Release retention is managed by the Publish pipeline stage (keep latest only).
+# Remove legacy expiry rule if present so the current release is not auto-deleted.
+if aws s3api get-bucket-lifecycle-configuration --bucket "$ARTIFACTS_BUCKET" >/dev/null 2>&1; then
+  aws s3api delete-bucket-lifecycle --bucket "$ARTIFACTS_BUCKET"
+  echo "Removed bucket lifecycle (Publish stage keeps one latest artifact)"
+fi
 
 echo "s3://${ARTIFACTS_BUCKET}/"
